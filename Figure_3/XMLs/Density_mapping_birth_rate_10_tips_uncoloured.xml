@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?><beast beautitemplate='Standard' beautistatus='' namespace='beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel
+:beast.evolution.substitutionmodel:beast.evolution.likelihood:beast.core.parameter:beast.evolution.tree.coalescent:multitypetree.operators:multitypetree.util:master.beast:master.conditions
+:master.beast:master.conditions:master.model:master.postprocessors:master.outputs:master:feast.mapping' version='2.0'>
+
+
+<tree spec='BeastTreeFromMaster' id='tree'
+		  samplePopulationSizes='true'
+		  nSamples='1'
+		  reverseTime='false'>
+
+		<model spec='Model' id='model'>
+
+			<populationType spec='PopulationType' typeName='X' dim='2' id='X'/>
+			<populationType spec='PopulationType' typeName='S' dim='2' id='S'/>
+
+			<reactionGroup spec='ReactionGroup' reactionGroupName='Birth'>
+				<reaction spec='Reaction' rate='0.4'>
+					X[0] -> 2X[0]
+				</reaction>
+				<reaction spec='Reaction' rate='0.3'>
+					X[1] -> 2X[1]
+				</reaction>
+			</reactionGroup>
+
+			<reactionGroup spec='ReactionGroup' reactionGroupName='Death'>
+				<reaction spec='Reaction' rate='0.27'>
+					X[0] -> 0
+				</reaction>
+				<reaction spec='Reaction' rate='0.17'>
+					X[1] -> 0
+				</reaction>
+			</reactionGroup>
+
+			<reactionGroup spec='ReactionGroup' reactionGroupName='Sampling'>
+				<reaction spec='Reaction'  rate='0.03'>
+					X[0]:1 -> S[0]:1
+				</reaction>
+				<reaction spec='Reaction'  rate='0.03'>
+					X[1]:1 -> S[1]:1
+				</reaction>
+			</reactionGroup>
+
+			<reactionGroup spec='ReactionGroup' reactionGroupName='Migration'>
+				<reaction spec='Reaction' rate='0.03'>
+					X[0] -> X[1]
+				</reaction>
+				<reaction spec='Reaction' rate='0.03'>
+					X[1] -> X[0]
+				</reaction>
+			</reactionGroup>
+		</model>
+
+		<initialState spec='InitState'>
+			<lineageSeed spec='Individual'>
+				<population spec='Population' type='@X' location='0'/>
+			</lineageSeed>
+		</initialState>
+
+		<!-- Abort simulation if number of infected individuals drops to zero -->
+		<lineageEndCondition spec='LineageEndCondition' nLineages='0' isRejection='true'>
+			<population spec='Population' type='@X' location='0' />
+			<population spec='Population' type='@X' location='1' />
+		</lineageEndCondition>
+
+		<!-- Finish simulation when n samples have been generated. -->
+		<lineageEndCondition spec='LineageEndCondition' nLineages='10' isRejection='false'>
+			<population spec='Population' type='@S' location='0' />
+			<population spec='Population' type='@S' location='1' />
+		</lineageEndCondition>
+
+		<!-- Keep only sampled lineages. -->
+		<inheritancePostProcessor spec='LineageFilter' populationName='S'/>
+
+		<!-- Trim off post-sampling lineages. -->
+		<inheritancePostProcessor spec='LineageFilter' populationName='S'
+								  leavesOnly='true' discard='true'/>
+
+		<output spec='NewickOutput' fileName='$(filebase)_$(seed).newick'/>
+		<output spec='NexusOutput' fileName='$(filebase)_$(seed).nexus'/>
+		<!--output spec='JsonOutput' fileName='BDMUC_treeSimAnaLyzer_sim_3demes.json'/-->
+
+	</tree>
+
+
+    <run spec="DensityMapper">
+
+			<distribution spec='beast.evolution.speciation.BirthDeathMigrationModelUncoloured'
+				id='treePrior' tree='@tree'
+				stateNumber='2' typeLabel='location'
+				conditionOnSurvival='true'>
+
+					<migrationMatrix spec='RealParameter' id='rateMatrix' value='.03' dimension='2' lower='0' upper='10'/>
+					<parameter name='frequencies' id='geo-frequencies' value='0.5 0.5' lower='0.' upper='1.'/>
+					<parameter name='birthRate' idref='birthRate' lower='0' dimension='2' value='2.' upper='10'/>
+					<parameter name='deathRate' id='deathRate' value='0.27 0.17' lower='0' dimension='2' upper='10'/>
+					<parameter name='samplingRate' id='samplingRate' value='0.03 0.03' lower='0' dimension='2'  upper='1.'/>	<!-- 0.166667 0.333333 0.333333 -->
+				</distribution>
+
+        <realParam spec="RealParameter" id="birthRate"
+            value="0.4 0.3" lower="0.05" upper="2.0"/>
+        <steps spec="IntegerParameter"
+            value="100 1"/>
+
+        <logger spec="Logger" fileName='$(filebase)_$(seed).log' id='log' logEvery="1">
+            <log idref="birthRate"/>
+            <log idref="treePrior"/>
+						<log idref='deathRate'/>
+						<log idref='samplingRate'/>
+						<log idref='rateMatrix'/>
+						<log idref='geo-frequencies'/>
+        </logger>
+
+				<logger id="screenlog" logEvery="1">
+						<log idref="birthRate"/>
+						<log idref="treePrior"/>
+				</logger>
+
+    </run>
+</beast>
